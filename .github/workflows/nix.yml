@@ -16,4 +16,4 @@ jobs:
       with:
         name: hannes-hochreiner
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-    - run: nix build --extra-experimental-features nix-command --extra-experimental-features flakes
+    - run: nix build --extra-experimental-features nix-command --extra-experimental-features flakes --accept-flake-config
