@@ -1,16 +1,11 @@
-# template-rust
-template for Rust projects
+# event-extractor
+Tool to extract events (currently only birthdays) from vCard files into iCal files.
 
 ## Usage
+**IMPORTANT NOTE:** All ics files in the output directory will be deleted.
 
-To use this template for libraries, run the following command:
 ```bash
-cargo init --lib
-```
-
-To use this template for binaries, run the following command:
-```bash
-cargo init
+event-extractor --input input_dir --output output_dir
 ```
 
 ## License
