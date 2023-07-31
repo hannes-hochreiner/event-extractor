@@ -15,5 +15,5 @@ ical = { version = "0.8.0", default-features = false, features = [
   "ical",
 ] }
 log = "0.4.19"
-quoted_printable = "0.5.0"
+# quoted_printable = "0.5.0"
 thiserror = "1.0.44"
