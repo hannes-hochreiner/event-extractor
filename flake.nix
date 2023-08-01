@@ -49,6 +49,14 @@
                 type = lib.types.str;
                 description = "Sets the path of the event-extractor config file";
               };
+              user = mkOption {
+                type = lib.types.str;
+                description = "Sets the user for the service";
+              };
+              group = mkOption {
+                type = lib.types.str;
+                description = "Sets the group for the service";
+              };
             };
 
             config = mkIf cfg.enable {
@@ -60,8 +68,8 @@
                 in {
                   Type = "oneshot";
                   ExecStart = "${pkg}/bin/event-extractor --config ${cfg.config_path}";
-                  User = radicale;
-                  Group = radicale;
+                  User = cfg.user;
+                  Group = cfg.group;
                 };
               };
               systemd.timers."hochreiner.event-extractor" = {
