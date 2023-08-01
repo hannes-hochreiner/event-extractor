@@ -6,7 +6,7 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum SerializationError {
-    #[error("serialization of property \"{}\" not implemented", 0)]
+    #[error("serialization of property \"{}\" not implemented", .0)]
     SerializationNotImplemented(String),
 }
 

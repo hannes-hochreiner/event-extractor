@@ -1,10 +1,23 @@
+pub mod config;
 pub mod ser;
-use chrono::{DateTime, Duration, TimeZone, Utc};
+use std::{
+    fs::{read_dir, remove_file, File},
+    io::{BufReader, BufWriter, Write},
+    path::PathBuf,
+};
+
+use chrono::{DateTime, Datelike, Duration, TimeZone, Utc};
+use config::Entry;
 use ical::{
-    parser::{ical::component::IcalEvent, vcard::component::VcardContact},
+    parser::{
+        ical::component::{IcalCalendar, IcalEvent},
+        vcard::component::VcardContact,
+    },
     property::Property,
 };
 use thiserror::Error;
+
+use crate::ser::calendar_to_string;
 
 #[derive(Debug, PartialEq)]
 struct ExtractedDate {
@@ -27,6 +40,107 @@ pub enum EventExtractorError {
     UnexpectedDateFormat,
     #[error("serialization error")]
     SerializationError(#[from] ser::SerializationError),
+    #[error("configuration error")]
+    ConfigError(#[from] config::ConfigError),
+    #[error("std::io error")]
+    StdIoError(#[from] std::io::Error),
+    #[error("ical::parser parse error")]
+    IcalParseError(#[from] ical::parser::ParserError),
+}
+
+pub fn process_entry(config_entry: &Entry) -> Result<(), EventExtractorError> {
+    if config_entry.remove_files {
+        // remove existing files
+        log::info!("removing exiting files");
+        for entry in read_dir(&config_entry.output)? {
+            let path = entry?.path();
+
+            if path.is_file() && path.ends_with(".ics") {
+                remove_file(path)?
+            }
+        }
+    }
+
+    let current_year = Utc::now().year();
+    let years: Vec<i32> = vec![-1, 0, 1, 2]
+        .iter()
+        .map(|offset| current_year + offset)
+        .collect();
+    log::info!(
+        "generating entries for years: {}",
+        years
+            .iter()
+            .map(|elem| elem.to_string())
+            .collect::<Vec<String>>()
+            .join(", ")
+    );
+
+    // create new files
+    for entry in read_dir(&config_entry.input)? {
+        let path = entry?.path();
+
+        log::debug!(
+            "found entry \"{}\", is file: {}, ends with .vcf: {}",
+            path.to_string_lossy(),
+            path.is_file(),
+            match path.extension() {
+                Some(extension) => extension == "vcf",
+                None => false,
+            }
+        );
+
+        if path.is_file()
+            && match path.extension() {
+                Some(extension) => extension == "vcf",
+                None => false,
+            }
+        {
+            log::info!("processing file \"{}\"", path.to_string_lossy());
+
+            let buf = BufReader::new(File::open(&path).unwrap());
+            let reader = ical::VcardParser::new(buf);
+
+            for vcard in reader {
+                let contact = vcard?;
+                for event in convert(&contact, &years)? {
+                    let uid = event
+                        .properties
+                        .iter()
+                        .find(|&elem| elem.name == "UID")
+                        .ok_or(EventExtractorError::PropertyNotFound("UID".into()))?
+                        .value
+                        .as_ref()
+                        .ok_or(EventExtractorError::PropertyValueNotFound("UID".into()))?
+                        .clone();
+                    let mut filename = PathBuf::from(&config_entry.output);
+                    filename.push(format!("{}.ics", uid));
+
+                    let cal = IcalCalendar {
+                        properties: vec![
+                            Property {
+                                name: "VERSION".into(),
+                                value: Some("2.0".into()),
+                                ..Default::default()
+                            },
+                            Property {
+                                name: "PRODID".into(),
+                                value: Some("event-extractor//hochreiner.net".into()),
+                                ..Default::default()
+                            },
+                        ],
+                        events: vec![event],
+                        ..Default::default()
+                    };
+
+                    let mut writer = BufWriter::new(File::create(filename)?);
+
+                    writer.write_all(calendar_to_string(&cal)?.as_bytes())?;
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 pub fn convert(
