@@ -39,44 +39,42 @@
           drv = event-extractor;
         };
 
-        # nixosModules.default = { config, lib, pkgs, ... }:
-        #   with lib;
-        #   let cfg = config.hochreiner.services.rusthello;
-        #   in {
-        #     options.hochreiner.services.rusthello = {
-        #       enable = mkEnableOption "Enables the rust hello service";
-        #     };
+        nixosModules.default = { config, lib, pkgs, ... }:
+          with lib;
+          let cfg = config.hochreiner.services.event-extractor;
+          in {
+            options.hochreiner.services.event-extractor = {
+              enable = mkEnableOption "Enables the event-extractor service";
+              config_path = mkOption {
+                type = lib.types.str;
+                description = "Sets the path of the event-extractor config file";
+              };
+            };
 
-        #     config = mkIf cfg.enable {
-        #       systemd.services."hochreiner.rusthello" = {
-        #         description = "rust hello test service";
-        #         wantedBy = [ "multi-user.target" ];
+            config = mkIf cfg.enable {
+              systemd.services."hochreiner.event-extractor" = {
+                description = "event-extractor service";
+                wantedBy = [ "multi-user.target" ];
 
-        #         serviceConfig = let pkg = self.packages.${system}.default;
-        #         in {
-        #           # Restart = "on-failure";
-        #           Type = "oneshot";
-        #           ExecStart = "${pkg}/bin/event-extractor";
-        #           DynamicUser = "yes";
-        #           RuntimeDirectory = "hochreiner.rusthello";
-        #           RuntimeDirectoryMode = "0755";
-        #           StateDirectory = "hochreiner.rusthello";
-        #           StateDirectoryMode = "0700";
-        #           CacheDirectory = "hochreiner.rusthello";
-        #           CacheDirectoryMode = "0750";
-        #         };
-        #       };
-        #       systemd.timers."hochreiner.rusthello" = {
-        #         description = "timer for the rust hello test service";
-        #         wantedBy = [ "multi-user.target" ];
-        #         timerConfig = {
-        #           OnBootSec="5min";
-        #           OnUnitInactiveSec="5min";
-        #           Unit="hochreiner.rusthello.service";
-        #         };
-        #       };
-        #     };
-        #   };
+                serviceConfig = let pkg = self.packages.${system}.default;
+                in {
+                  Type = "oneshot";
+                  ExecStart = "${pkg}/bin/event-extractor --config ${cfg.config_path}";
+                  User = radicale;
+                  Group = radicale;
+                };
+              };
+              systemd.timers."hochreiner.event-extractor" = {
+                description = "timer for the event-extractor service";
+                wantedBy = [ "multi-user.target" ];
+                timerConfig = {
+                  OnBootSec="30min";
+                  OnUnitInactiveSec="30min";
+                  Unit="hochreiner.event-extractor.service";
+                };
+              };
+            };
+          };
 
         devShells.default = pkgs.mkShell {
           inputsFrom = builtins.attrValues self.checks;
