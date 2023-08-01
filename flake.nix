@@ -46,7 +46,7 @@
             options.hochreiner.services.event-extractor = {
               enable = mkEnableOption "Enables the event-extractor service";
               config_path = mkOption {
-                type = lib.types.str;
+                type = lib.types.path;
                 description = "Sets the path of the event-extractor config file";
               };
               user = mkOption {
