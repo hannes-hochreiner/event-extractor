@@ -2,6 +2,9 @@ use serde::Deserialize;
 use std::fs;
 use thiserror::Error;
 
+#[cfg(test)]
+mod tests;
+
 #[derive(Error, Debug)]
 pub enum ConfigError {
     #[error("configuration error: {}", .0)]
@@ -12,12 +15,12 @@ pub enum ConfigError {
     StdIoError(#[from] std::io::Error),
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct Config {
     pub entries: Vec<Entry>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug, PartialEq)]
 pub struct Entry {
     pub input: String,
     pub output: String,
@@ -31,3 +34,30 @@ impl Config {
         )?)
     }
 }
+
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+
+//     #[test]
+//     fn parse_test1() {
+//         let text = r#"
+//             {
+//                 "entries": [
+//                     {"input": "/path/input", "output": "/path/output", "remove_files": true}
+//                 ]
+//             }
+//         "#;
+
+//         assert_eq!(
+//             serde_json::from_str::<Config>(text).unwrap(),
+//             Config {
+//                 entries: vec![Entry {
+//                     input: "/path/input".into(),
+//                     output: "/path/output".into(),
+//                     remove_files: true
+//                 }]
+//             }
+//         )
+//     }
+// }
