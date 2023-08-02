@@ -55,7 +55,12 @@ pub fn process_entry(config_entry: &Entry) -> Result<(), EventExtractorError> {
         for entry in read_dir(&config_entry.output)? {
             let path = entry?.path();
 
-            if path.is_file() && path.ends_with(".ics") {
+            if path.is_file()
+                && match path.extension() {
+                    Some(extension) => extension == "ics",
+                    None => false,
+                }
+            {
                 remove_file(path)?
             }
         }
